@@ -1,7 +1,21 @@
 import serial
+import numpy as np
+
+def doyourprocessinghere(line,times,angleX,angleY,angleZ,accelX,accelY,accelZ):
+    print(line)
+    temp = line.split()
+    if (len(temp) != 7):
+        return;
+    times.append(temp[0])
+    angleX.append(temp[1])
+    angleY.append(temp[2])
+    angleZ.append(temp[3])
+    accelX.append(temp[4])
+    accelY.append(temp[5])
+    accelZ.append(temp[6])
 
 ser = serial.Serial(
-    port='/dev/cu.usbmodem4541241',\
+    port='/dev/cu.usbmodem4542331',\
     baudrate=9600,\
     parity=serial.PARITY_NONE,\
     stopbits=serial.STOPBITS_ONE,\
@@ -11,15 +25,20 @@ ser = serial.Serial(
 print("connected to: " + ser.portstr)
 message = str("")
 count=1
-
-done = false
-while not done :
-    for line in ser.read():
-        print(chr(line) )
-        message += chr(line)
-        count += 1
-        if message[len(message) - 4: ].equals("done") :
-            done = true;
-
-print(message)
+times=[]
+angleX=[]
+angleY=[]
+angleZ=[]
+accelX=[]
+accelY=[]
+accelZ=[]
+line = ""
+while True :
+    for character in ser.read():
+        #print(chr(character) , end="")
+        line = line+chr(character);
+        if (character==10):
+            doyourprocessinghere(line,times,angleX,angleY,angleZ,accelX,accelY,accelZ);
+            line = ""
+        #message += chr(line)
 ser.close()
