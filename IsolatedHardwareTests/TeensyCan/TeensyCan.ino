@@ -12,7 +12,7 @@
 #include <FlexCAN.h>
 
 Metro sysTimer = Metro(1);// milliseconds
-
+Metro CANtimer = Metro(10);
 
 #define NSIL 11
 #define STANDBY 12
@@ -44,6 +44,9 @@ static void hexDump(uint8_t dumpLen, uint8_t *bytePtr)
 void setup(void)
 {
   CANbus.begin();
+
+  Serial.begin(115200);
+
   pinMode(led, OUTPUT);
   digitalWrite(led, 1);
 
@@ -62,29 +65,39 @@ void setup(void)
 // -------------------------------------------------------------
 void loop(void)
 {
-   msg.id = 0x220;
-   msg.len = 8;
-   msg.buf[0] = 1;
-   msg.buf[1] = 2;
-   msg.buf[2] = 3;
-   msg.buf[3] = 4;
-   msg.buf[4] = 5;
-   msg.buf[5] = 6;
-   msg.buf[6] = 7;
-   msg.buf[7] = 8;
+  if (CANtimer.check()){
+    // msg.id = 0x220;
+    // msg.len = 8;
+    // msg.buf[0] = 1;
+    // msg.buf[1] = 2;
+    // msg.buf[2] = 3;
+    // msg.buf[3] = 4;
+    // msg.buf[4] = 5;
+    // msg.buf[5] = 6;
+    // msg.buf[6] = 7;
+    // msg.buf[7] = 8;
 
-   while(true) {
+    msg.id = (0x3<<8) | (0xFF);
+    msg.ext = 1;
+    msg.len = 8;
+    msg.buf[0] = 0x3E;
+    msg.buf[1] = 0x03;
+    msg.buf[2] = 0x00;
+    msg.buf[3] = 0x00;
+    msg.buf[4] = 0x00;
+    msg.buf[5] = 0x00;
+    msg.buf[6] = 0x00;
+    msg.buf[7] = 0x00;
+
     CANbus.write(msg);
-    msg.buf[0];
-    delay(50);
-   }
+  }
 
-  /*if (CANbus.available()) {
+  if (CANbus.available()) {
     int test = CANbus.read(rxmsg);
     Serial.write(sizeof(test));
     Serial.write("=");
     Serial.println(rxmsg.id);
-  }*/
+  }
 
    
   // service software timers based on Metro tick
