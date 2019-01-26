@@ -2,6 +2,8 @@
 #include <FlexCAN.h>
 #include "RF24.h"
 #include "vESC_datatypes.h"
+#include "ESCHall2017Simple.h"
+#include "config_ESC.h"
 
 #define NSIL 3
 #define STANDBY 4
@@ -13,7 +15,7 @@
 typedef struct {
   int32_t LSteeringMotor;
   int32_t RSteeringMotor;
-  uint8_t throttle;
+  uint16_t throttle;
 } driveCommands_t;
 
 RF24 radio(7,8);
@@ -33,6 +35,8 @@ unsigned int txTimer,rxTimer;
 Metro sysTimer = Metro(1);// milliseconds
 Metro CANtimer = Metro(10);
 Metro wirelessTimeout = Metro(100);
+Metro ESCupdateTimer = Metro(50);
+Metro radioReadTimer = Metro(20);
 
 void readRadio(void);
 void sendSteering(void);
@@ -54,6 +58,17 @@ void setup(void)
   radio.startListening();
 
   CANbus.begin();
+
+  // ESC stuff
+  setupPins();
+  analogWrite(INHA, 0);
+  analogWrite(INHB, 0);
+  analogWrite(INHC, 0);
+
+  attachInterrupt(HALL1, hallISR, CHANGE);
+  attachInterrupt(HALL2, hallISR, CHANGE);
+  attachInterrupt(HALL3, hallISR, CHANGE);
+  // end ESC stuff
 
   // pinMode(NSIL, HIGH);
   // pinMode(STANDBY, LOW);
@@ -84,7 +99,13 @@ void loop(void)
     mostRecentCommands.throttle = 0;
   }
 
-  readRadio();
+  if (ESCupdateTimer.check()){
+    ESCupdate(mostRecentCommands.throttle);
+  }
+
+  if (radioReadTimer.check()){
+    readRadio();
+  }
 }
 
 void readRadio() {
@@ -95,9 +116,9 @@ void readRadio() {
       Serial.print('\t');
       Serial.print(readBuffer[i]);
     }
-    mostRecentCommands.LSteeringMotor = ((int32_t)readBuffer[4])*600;
+    mostRecentCommands.LSteeringMotor = ((int32_t)readBuffer[4])*600; // scale from 64 to 0.40*1e5
     mostRecentCommands.RSteeringMotor = ((int32_t)readBuffer[4])*600;
-    mostRecentCommands.throttle = max(0, readBuffer[2]);
+    mostRecentCommands.throttle = max(0, readBuffer[2]) << 6; // scale from 64 to 4096
     Serial.print('\t');
     Serial.print(mostRecentCommands.LSteeringMotor);
     Serial.print('\t');
@@ -142,8 +163,8 @@ void sendThrottle(void){
   msg.id = MmotorCAN & 0xFF;
   msg.ext = 0;
   msg.len = 8;
-  msg.buf[0] = mostRecentCommands.throttle & 0xFF;
-  msg.buf[1] = 0x00;
+  msg.buf[0] = (mostRecentCommands.throttle >> 8) & 0xFF;
+  msg.buf[1] = (mostRecentCommands.throttle >> 0) & 0xFF;
   msg.buf[2] = 0x00;
   msg.buf[3] = 0x00;
   msg.buf[4] = 0x00;
